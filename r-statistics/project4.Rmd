@@ -1,0 +1,160 @@
+---
+title: "Project4"
+output: html_document
+---
+
+#婚姻狀況(Marital_Status)跟交易金額(Total_Trans_Amt)的關係。
+```{r}
+install.packages(rstatix)
+library(rstatix)
+library(data.table)
+library(car)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+bank=read.csv("D:/USER/Desktop/(r)statistics/BankChurners_new.csv")
+```
+
+```{r}
+married=bank %>% filter(Marital_Status=='Married') %>% select(Marital_Status)
+d_married=bank %>% filter(Marital_Status=='Married' & Dependent_count>2) %>% select(Marital_Status, Dependent_count)
+mean(d_married$Dependent_count)
+
+divorced=bank %>% filter(Marital_Status=='Divorced') %>% select(Marital_Status)
+d_divorced=bank %>% filter(Marital_Status=='Divorced' & Dependent_count>2) %>% select(Marital_Status, Dependent_count)
+mean(d_divorced$Dependent_count)
+
+#only結婚和離婚
+m=bank %>% filter(Marital_Status=='Married' | Marital_Status=='Divorced') %>% select(Marital_Status, Dependent_count, Total_Trans_Amt)
+
+noUnknown=bank %>% filter(Marital_Status!='Unknown')
+
+#Gender?
+male=noUnknown %>% filter(Gender=='M')
+female=noUnknown %>% filter(Gender=='F')
+
+#trytrycan
+
+```
+```{r}
+ggplot(bank, aes(x = Marital_Status, y = Total_Trans_Amt, color = Marital_Status)) +
+  geom_boxplot()
+ggplot(m, aes(x = Marital_Status, y = Total_Trans_Amt, color = Marital_Status)) +
+  geom_boxplot()
+ggplot(noUnknown, aes(x = Marital_Status, y = Total_Trans_Amt, color = Gender)) +
+  geom_boxplot()
+```
+
+
+
+```{r}
+ggplot(data=bank)+geom_histogram(aes(x=Total_Trans_Amt))
+ggplot(data=bank)+geom_histogram(aes(x=Total_Trans_Amt, fill=as.factor(Marital_Status)))+facet_grid(.~Marital_Status)
+
+shapiro.test(bank$Total_Trans_Amt)
+shapiro.test(m$Total_Trans_Amt)
+shapiro.test(bank$Dependent_count)
+shapiro.test(m$Dependent_count)
+shapiro.test(noUnknown$Total_Trans_Amt)
+
+shapiro.test(male$Total_Trans_Amt)
+shapiro.test(female$Total_Trans_Amt)
+```
+```{r}
+leveneTest(Total_Trans_Amt ~ Marital_Status, bank)
+leveneTest(Total_Trans_Amt ~ Marital_Status, m)
+leveneTest(Dependent_count ~ Marital_Status, bank)
+leveneTest(Dependent_count ~ Marital_Status, m)
+leveneTest(Total_Trans_Amt ~ Marital_Status, noUnknown)
+leveneTest(Total_Trans_Amt ~ Marital_Status, male)
+leveneTest(Total_Trans_Amt ~ Marital_Status, female)
+leveneTest(Total_Trans_Amt ~ Dependent_level, noUnknown)
+```
+
+```{r}
+leveneTest( (Total_Trans_Amt / Total_Trans_Ct) ~ Marital_Status , noUnknown)
+leveneTest( (Total_Trans_Amt / Total_Trans_Ct) ~ Card_Category , noUnknown)#X
+leveneTest( (Total_Trans_Amt / Total_Trans_Ct) ~ Attrition_Flag , noUnknown)
+leveneTest( (Total_Trans_Amt / Total_Trans_Ct) ~ Gender , noUnknown)#X
+leveneTest( (Total_Trans_Amt / Total_Trans_Ct) ~ Dependent_level , noUnknown)
+leveneTest( (Total_Trans_Amt / Total_Trans_Ct) ~ Education_Level , noUnknown)
+leveneTest( (Total_Trans_Amt / Total_Trans_Ct) ~ Income_Category , noUnknown)
+```
+
+```{r}
+noUnknown %>% welch_anova_test(Total_Trans_Amt ~ Attrition_Flag)
+
+welch_anova_test(noUnknown, Total_Trans_Amt ~ Attrition_Flag)
+
+aov.f=aov( Total_Trans_Amt ~ Attrition_Flag , data = noUnknown)
+summary(aov.f)
+```
+
+```{r}
+aov.a=aov( (Total_Trans_Amt / Total_Trans_Ct) ~ Marital_Status , data = noUnknown)#X
+summary(aov.a)
+aov.b=aov( (Total_Trans_Amt / Total_Trans_Ct) ~ Attrition_Flag , data = noUnknown)#X
+summary(aov.b)
+aov.c=aov( (Total_Trans_Amt / Total_Trans_Ct) ~ Dependent_level , data = noUnknown)#X
+summary(aov.c)
+aov.d=aov( (Total_Trans_Amt / Total_Trans_Ct) ~ Education_Level , data = noUnknown)#X
+summary(aov.d)
+aov.e=aov( (Total_Trans_Amt / Total_Trans_Ct) ~ Income_Category , data = noUnknown)#X
+summary(aov.e)
+```
+
+不同婚姻狀況的總交易金額是否相同? 
+H0: Divorced = Married = Single = Unknown。
+HA: 總交易金額不完全相同。
+```{r}
+#婚姻狀況vs總交易金額hasUnkown
+aov.Total_Trans_Amt=aov(Total_Trans_Amt ~ Marital_Status, data = bank)
+summary(aov.Total_Trans_Amt)
+#結婚的人有沒有離婚vs總交易金額
+aov.m_Total_Trans_Amt=aov(Total_Trans_Amt ~ Marital_Status, data = m)
+summary(aov.m_Total_Trans_Amt)
+#結婚的人有沒有離婚vs扶養人數
+aov.m_Dependent_count=aov(Dependent_count ~ Marital_Status, data = m)
+summary(aov.m_Dependent_count)
+#扶養人數vs總交易金額
+aov.Dependent_count=aov(Total_Trans_Amt ~ Dependent_count, data = bank)
+summary(aov.Dependent_count)
+#婚姻狀況vs總交易金額noUnknown
+aov.n_Total_Trans_Amt=aov(Total_Trans_Amt ~ Marital_Status, data = noUnknown)
+summary(aov.n_Total_Trans_Amt)
+
+#Gender?
+aov.male=aov(Total_Trans_Amt ~ Marital_Status, data=male)
+summary(aov.male)
+aov.female=aov(Total_Trans_Amt ~ Marital_Status, data=female)
+summary(aov.female)
+
+
+aov.Dependent_count=aov(Total_Trans_Amt ~ Dependent_count, data = noUnknown)
+summary(aov.Dependent_count)
+aov.Dependent_level=aov(Total_Trans_Amt ~ Dependent_level, data = noUnknown)
+summary(aov.Dependent_level)
+
+
+aov.n_Total_Trans_Ct=aov(Total_Trans_Ct ~ Marital_Status, data = noUnknown)
+summary(aov.n_Total_Trans_Ct)
+```
+p > 0.05 不拒絕H0
+1.婚姻狀況和總交易金額無明顯相關性(包含Unknown)
+2.結婚的人有沒有離婚和總交易金額無關
+3.結婚的人有沒有離婚和扶養人數無關
+4.扶養人數和總交易金額無關
+5.婚姻狀況和總交易金額無明顯相關性(不包含Unknown)
+6.男性婚姻狀況和總交易金額無關(不包含Unknown)
+7.女性婚姻狀況和總交易金額無關(不包含Unknown)
+```{r}
+amt <- aov(Total_Trans_Amt ~ Marital_Status * Dependent_level, data = noUnknown)
+summary(amt)
+ct <- aov(Total_Trans_Ct ~ Marital_Status * Dependent_level, data = noUnknown)
+summary(ct)
+```
+
+```{r}
+ggplot(noUnknown, aes(x = Marital_Status, y = Total_Revolving_Bal, color=as.factor(Marital_Status))) +
+  geom_boxplot()
+```

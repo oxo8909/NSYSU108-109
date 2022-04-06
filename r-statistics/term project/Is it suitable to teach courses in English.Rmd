@@ -1,0 +1,360 @@
+---
+title: "Is it suitable to teach courses in English"
+output: html_document
+---
+#不要西灣!!
+
+#設定
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(car)
+library(data.table)
+library(forcats)
+library(BSDA)
+survey=read.csv("D:/USER/Desktop/(r)statistics/term project/Is it suitable to teach courses in English.csv")
+survey=survey %>% filter(college!="西灣學院")
+course=read.csv("D:/USER/Desktop/(r)statistics/term project/Course by subject.csv")
+course_2=read.csv("D:/USER/Desktop/(r)statistics/term project/Course by subject_2.csv")#無"非常"版
+survey_2=read.csv("D:/USER/Desktop/(r)statistics/term project/Is it suitable to teach courses in English_2.csv")#英文版
+survey_2=survey_2 %>% filter(college!="西灣學院")
+survey_3=survey_2
+```
+#1.區間估計--自信程度的平均
+```{r}
+#畫圖
+#母體的變異數未知的情況，用t分布
+mean.range=function(x, alpha=0.05) {
+  n=length(x) # n = 樣本數
+  mx=mean(x) # mx 即為平均值 mu 的點估計
+  S=sqrt(var(x)) # S 即為標準差的點估計
+  r1=qt(alpha/2, df=n-1) # 信賴區間，下半截掉 alpha/2
+  r2=qt(1-alpha/2, df=n-1) # 信賴區間，上半截掉 alpha/2
+  L1=mx-r2*S/sqrt(n) # 信賴區間下限
+  L2=mx-r1*S/sqrt(n) # 信賴區間上限
+  range=c(L1, mx, L2)
+  return(range)
+}
+mean.range(survey$confident_level)
+
+ci = function(x, alpha=0.05) {
+  n = length(x) # n = 樣本數
+  S = sqrt(var(x)) # S 即為標準差的點估計
+  r = qt(1-alpha/2, df=n-1)
+  range = c(r*S/sqrt(n))
+  return(range)
+}
+
+survey_ci=survey %>% group_by(college) %>% summarise(mean=mean(confident_level),ci=ci(confident_level)) 
+
+survey_ci %>% ggplot(aes(y = mean, x=college))+
+  geom_point(size = 5, alpha = 0.5)+
+  geom_errorbar(width = 0.1, aes(ymin = mean-ci, ymax = mean+ci), colour = "darkred")+ labs(x = "學院",y = "自信程度")
+
+
+survey_2=survey %>% summarise(mean=mean(confident_level),ci=ci(confident_level)) 
+survey_2 %>% ggplot(aes(y="",x=mean))+
+  geom_point(size = 5, alpha = 0.5)+
+  geom_errorbar(width = 0.1, aes(xmin = mean-ci, xmax = mean+ci), colour = "darkred")+ labs(y="全體抽樣學生",x = "自信程度")
+```
+
+#5.假說檢定--自信程度與雙語年數有什麼關聯?
+```{r}
+t5=survey %>% select(confident_level,bilingual_year)
+ggplot(t5,aes(x=confident_level,fill=confident_level))+geom_bar(position="dodge")
+ggplot(t5,aes(x=bilingual_year,fill=bilingual_year))+geom_bar(position="dodge")
+ggplot(t5,aes(x=confident_level,fill=bilingual_year))+geom_bar(position="dodge")
+ggplot(t5,aes(x=confident_level,fill=bilingual_year))+geom_bar(position="fill")
+##卡方獨立性
+# H0 : 自信程度與雙語年數互相獨立
+# H1 : 自信程度與雙語年數互相不獨立
+chisq.test(table(t5))
+#p=0.005832，<0.05，拒絕H0，自信程度與雙語年數互相不獨立->有相關
+```
+#6.假說檢定--自信程度與自學程度?
+```{r}
+t6=survey %>% select(confident_level,self_study)
+ggplot(t6,aes(x=confident_level,fill=confident_level))+geom_bar(position="dodge")
+ggplot(t6,aes(x=self_study,fill=self_study))+geom_bar(position="dodge")
+##卡方齊一性
+# H0 : 自信程度與自學程度
+# H1 : 自信程度與自學程度互相不獨立
+chisq.test(table(t6))
+#p=0.003976，<0.05，拒絕H0，自信程度與自學程度互相不獨立->有相關
+t6_2=survey %>% filter(confident_level!=0&self_study!=0) %>% select(confident_level,self_study)
+ggplot(t6_2,aes(x=confident_level,fill=confident_level))+geom_bar(position="dodge")
+ggplot(t6_2,aes(x=self_study,fill=self_study))+geom_bar(position="dodge")
+##卡方獨立性
+# H0 : 自信程度與自學程度互相獨立
+# H1 : 自信程度與自學程度互相不獨立
+chisq.test(table(t6_2))
+#p=0.003976，<0.05，拒絕H0，自信程度與自學程度互相不獨立->有相關
+```
+#7.雙樣本z-test--自信程度/多益成績/雙語環境/自學程度...與贊成/不贊成英語授課有什麼關聯?
+H0: mu1(贊成的自信程度) <= mu2(不贊成的自信程度)
+H1: mu1(贊成的自信程度) > mu2(不贊成的自信程度)
+結果: 拒絕H0
+```{r}
+yes <- survey %>% filter(yes_no == '贊成' & confident_level != 'NA')
+no <- survey %>% filter(yes_no == '不贊成' & confident_level != 'NA')
+z.test(yes$confident_level, no$confident_level, alternative = "greater", sigma.x = sd(yes$confident_level), sigma.y = sd(no$confident_level), conf.level = 0.95)
+```
+H0: mu1(贊成的多益成績) = mu2(不贊成的多益成績)
+H1: mu1(贊成的多益成績) != mu2(不贊成的多益成績)
+結果: 不拒絕H0
+```{r}
+yes <- survey %>% filter(yes_no == '贊成' & toeic_total != 'NA')
+no <- survey %>% filter(yes_no == '不贊成' & toeic_total != 'NA')
+z.test(yes$toeic_total, no$toeic_total, alternative = "two.sided", sigma.x = sd(yes$toeic_total), sigma.y = sd(no$toeic_total), conf.level = 0.95)
+```
+H0: mu1(贊成的自學程度) <= mu2(不贊成的自學程度)
+H1: mu1(贊成的自學程度) > mu2(不贊成的自學程度)
+結果: 拒絕H0
+```{r}
+yes <- survey %>% filter(yes_no == '贊成' & self_study != 'NA')
+no <- survey %>% filter(yes_no == '不贊成' & self_study != 'NA')
+z.test(yes$self_study, no$self_study, alternative = "greater", sigma.x = sd(yes$self_study), sigma.y = sd(no$self_study), conf.level = 0.95)
+```
+#8.ANOVA--各院的多益成績比較X
+```{r}
+college_and_toeic=read.csv("D:/USER/Desktop/(r)statistics/term project/College and toeic.csv")
+t8=college_and_toeic %>% filter(college!="西灣學院") %>% filter(toeic_total!="NA") %>% select(college,toeic_total,toeic_listening)
+ggplot(t8, aes(x = college, y = toeic_total, color = college)) +
+  geom_boxplot()
+mean_ocean=t8 %>% filter(college=="Ocean")
+mean_ocean=mean(mean_ocean$toeic_total)
+mean_art=t8 %>% filter(college=="Art")
+mean_art=mean(mean_art$toeic_total)
+mean_e=t8 %>% filter(college=="Engineering")
+mean_e=mean(mean_e$toeic_total)
+mean_sci=t8 %>% filter(college=="Science")
+mean_sci=mean(mean_sci$toeic_total)
+mean_so=t8 %>% filter(college=="SocialScience")
+mean_so=mean(mean_so$toeic_total)
+mean_m=t8 %>% filter(college=="Management")
+mean_m=mean(mean_m$toeic_total)
+
+shapiro.test(t8$toeic_total)#非常態分佈，但資料量>30，應該ok
+leveneTest(toeic_total ~ college,t8)#相同變異數
+oneway.test(toeic_total ~ college, data = t8, var.equal = TRUE)
+bartlett.test(toeic_total ~ college, data=t8)
+oneway.test(toeic_total ~ college, data = t8, var.equal = FALSE)
+library(rstatix)
+t8 %>% welch_anova_test(toeic_total ~ college)
+#H0: A = B = C = D = E =F。
+#H1: 各院的多益成績不完全相同。
+#p=0.01529，<0.05，各院的多益成績不完全相同
+names(t8)
+fm=aov(toeic_total ~ college, data = t8)
+names(fm)
+summary(fm)
+TukeyHSD(fm)
+plot(TukeyHSD(fm))+scale_y_discrete(labels = c('E-R','M-R','O-R','S-A','SS-A','M-E','O-E')) 
+par(las=2)
+par(mar=c(5,12,2,2))
+plot(TukeyHSD(fm))
+```
+#9.假說檢定(if n<30的作法:T)--五大學群贊成不贊成的比例
+```{r}
+#誰贊成比例最高->tukey X不是雙因子
+#信賴區間圖->最高假說 X沒做成功
+#分開比例->卡方同質性
+social=course %>% filter(course_by_subject=="Social Sciences & Management")
+engineer=course %>% filter(course_by_subject=="Engineering and Technology")
+art=course %>% filter(course_by_subject=="Arts & Humanities")
+nature=course %>% filter(course_by_subject=="Natural Sciences")
+life=course %>% filter(course_by_subject=="Life Sciences & Medicine")
+
+course=course %>% select(course_by_subject,yes_no)
+#course.factor=factor(course$yes_no)
+#course.factor
+#levels(course.factor)
+#factor(course$yes_no, levels=c("非常贊成","贊成","沒意見","不贊成","非常不贊成"))
+#lvls_reorder(course$yes_no, c(2,1,4,5,3))
+#卡方齊一性檢定
+ggplot(course, aes(x=course_by_subject, fill=yes_no))+geom_bar()+scale_x_discrete(labels = c('A&H','E&T','L&M','NS','SS&M')) 
+table(course)
+chisq.test(table(course))
+#p=0.185
+#不同學群贊成度沒有差異
+```
+#9-2不特別分非常贊成/不贊成
+```{r}
+course_2=course_2 %>% filter(yes_no!="沒意見"&course_by_subject!="Life Sciences & Medicine") %>% select(course_by_subject,yes_no)
+
+social_agree=course_2 %>% filter(course_by_subject=="Social Sciences & Management"&yes_no=="贊成")
+social=course_2 %>% filter(course_by_subject=="Social Sciences & Management")
+ggplot(course_2, aes(x=course_by_subject, fill=yes_no))+geom_bar() + coord_polar(theta = "y") 
+
+engineer_agree=course_2 %>% filter(course_by_subject=="Engineering and Technology"&yes_no=="贊成")
+engineer=course_2 %>% filter(course_by_subject=="Engineering and Technology")
+
+art_agree=course_2 %>% filter(course_by_subject=="Arts & Humanities"&yes_no=="贊成")
+art=course_2 %>% filter(course_by_subject=="Arts & Humanities")
+
+nature_agree=course_2 %>% filter(course_by_subject=="Natural Sciences"&yes_no=="贊成")
+nature=course_2 %>% filter(course_by_subject=="Natural Sciences")
+
+
+#各贊成比例
+count(social_agree)/count(social)
+count(engineer_agree)/count(engineer)
+count(art_agree)/count(art)
+count(nature_agree)/count(nature)
+
+#比例的信賴區間
+mean.range3 = function(x, alpha=0.05) {
+  n = length(x) # n = 樣本數
+  proport= as.vector(table(x))
+  p = proport[2]/n # mx 即為平均值 mu 的點估計
+  r1 = qnorm(alpha/2) # 信賴區間，下半截掉 alpha/2
+  r2 = qnorm(1-alpha/2) # 信賴區間，上半截掉 alpha/2
+  L1 = p-r2* sqrt(p*(1-p)/n) # 信賴區間下限
+  L2 = p-r1*sqrt(p*(1-p)/n) # 信賴區間上限
+  range = c(L1, p, L2) # 信賴區間
+  return(range)
+}
+
+mean.range3(art$yes_no)
+mean.range3(engineer$yes_no)
+mean.range3(social$yes_no)
+mean.range3(nature$yes_no)
+
+
+ci = function(x, alpha=0.05) {
+  n = length(x) # n = 樣本數
+  proport= as.vector(table(x))
+  p = proport[2]/n # mx 即為平均值 mu 的點估計
+  r1 = qnorm(alpha/2) # 信賴區間，下半截掉 alpha/2
+  r2 = qnorm(1-alpha/2) # 信賴區間，上半截掉 alpha/2
+  L1 = p-r2* sqrt(p*(1-p)/n) # 信賴區間下限
+  L2 = p-r1*sqrt(p*(1-p)/n) # 信賴區間上限
+  range = c(L1, p, L2) # 信賴區間
+  return(range)
+}
+
+#course_proport= as.vector(table(course_2$yes_no))
+#n=length(course_2$yes_no)
+#course_proport[2]
+course_ci=course_2 %>% group_by(course_by_subject) %>% summarise(px=((as.vector(table(course_2$yes_no))[2])/length(course_2$yes_no)),ci=ci(table(yes_no))) 
+
+ggplot(course_2, aes(x=course_by_subject, fill=yes_no))+geom_bar()+scale_x_discrete(labels = c('A&H','E&T','NS','SS&M')) 
+#卡方齊一性檢定
+table(course_2)
+chisq.test(table(course_2))
+#p=0.02262
+#不同學群贊成度有差異
+
+ggplot(course_2, aes(x=course_by_subject, fill=yes_no))+geom_bar(position="fill")+scale_x_discrete(labels = c('A&H','E&T','NS','SS&M')) 
+
+```
+#10.假說檢定(if n<30的作法:T)--院內贊成不贊成的比例
+```{r}
+#誰贊成比例最高
+#信賴區間圖->最高假說X
+#分開比例
+society_agree=survey %>% filter(college=="社會科學院"&yes_no=="贊成")
+society=survey %>% filter(college=="社會科學院")
+
+manage_agree=survey %>% filter(college=="管理學院"&yes_no=="贊成")
+manage=survey %>% filter(college=="管理學院")
+
+lan_agree=survey %>% filter(college=="文學院"&yes_no=="贊成")
+lan=survey %>% filter(college=="文學院")
+
+sea=survey %>% filter(college=="海洋科學學院")
+
+engine=survey %>% filter(college=="工學院")
+
+math_agree=survey %>% filter(college=="理學院"&yes_no=="贊成")
+math=survey %>% filter(college=="理學院")
+
+t10=survey %>% filter(yes_no=="贊成"|yes_no=="不贊成") %>% select(college, yes_no)
+#各贊成比例
+count(lan_agree)/count(lan)
+count(society_agree)/count(society)
+count(math_agree)/count(math)
+count(manage_agree)/count(manage)
+
+
+#卡方齊一性檢定
+ggplot(t10, aes(x=college, fill=yes_no))+geom_bar()
+table(t10)
+chisq.test(table(t10))
+#p=0.1698
+#不同學院贊成度沒有差異
+```
+#11.雙因子--學院、贊成不贊成 對 多益分數/自信程度#levene為啥沒過過過!!!
+```{r}
+#比例
+#levene#贊成多益#贊成自信
+#多益分數
+t11=survey_3 %>% filter(toeic_total!="NA"&(yes_no=="agree"|yes_no=="not agree")) %>% dplyr::select(college,yes_no,toeic_total,confident_level)
+ggplot(t11, aes(x = college, y = toeic_total, color = yes_no)) +
+  geom_boxplot()
+ggplot(t11, aes(x = yes_no, y = toeic_total, color = college)) +
+  geom_boxplot()
+
+leveneTest(toeic_total ~ college,t11)#沒過
+leveneTest(toeic_total ~ yes_no,t11)#有過
+interaction.plot(t11$college, t11$yes_no, t11$toeic_total)
+fm=aov(toeic_total ~ college * yes_no, data = t11)
+summary(fm)
+#college有關係
+#yes_no沒關
+#college:yes_no沒關
+
+#WELCH
+
+#TukeyHSD(fm)
+#自信程度
+ggplot(t11, aes(x = college, y = confident_level, color = yes_no)) +
+  geom_boxplot()
+ggplot(t11, aes(x = yes_no, y = confident_level, color = college)) +
+  geom_boxplot()
+
+leveneTest(confident_level ~ college,t11)#有過
+leveneTest(confident_level ~ yes_no,t11)#沒過
+interaction.plot(t11$college, t11$yes_no, t11$confident_level)
+fm=aov(confident_level ~ college * yes_no, data = t11)
+summary(fm)
+#college有關係
+#yes_no沒關
+#college:yes_no沒關
+```
+#12.雙因子--學院、雙語年數(當成類別) 對 多益分數/自信程度
+```{r}
+#多益分數
+t12=survey %>% filter(toeic_total!="NA") %>% select(college,bilingual_year,toeic_total,confident_level)
+interaction.plot(t12$college, t12$bilingual_year, t12$toeic_total)
+ggplot(t12, aes(x = college, y = toeic_total, color = bilingual_year)) +
+  geom_boxplot()
+ggplot(t12, aes(x = bilingual_year, y = toeic_total, color = college)) +
+  geom_boxplot()
+
+leveneTest(toeic_total ~ college,t12)#過
+leveneTest(toeic_total ~ bilingual_year,t12)#過
+interaction.plot(t12$college, t12$bilingual_year, t12$toeic_total)
+fm=aov(toeic_total ~ college * bilingual_year, data = t12)
+summary(fm)
+#college有關係
+#bilingual_year沒關
+#college:bilingual_year沒關
+
+#自信程度
+interaction.plot(t12$college, t12$bilingual_year, t12$confident_level)
+ggplot(t12, aes(x = college, y = confident_level, color = bilingual_year)) +
+  geom_boxplot()
+ggplot(t12, aes(x = bilingual_year, y = confident_level, color = college)) +
+  geom_boxplot()
+
+leveneTest(confident_level ~ college,t12)#沒過
+leveneTest(confident_level ~ bilingual_year,t12)#過
+interaction.plot(t12$college, t12$bilingual_year, t12$confident_level)
+fm=aov(confident_level ~ college * bilingual_year, data = t12)
+summary(fm)
+#college有關係
+#bilingual_year有關係
+#college:bilingual_year沒關
+```
