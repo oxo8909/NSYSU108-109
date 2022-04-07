@@ -3,21 +3,21 @@
   - 矩陣相乘matrix_multiple
   - 矩陣轉置matrix_transpose
   - 遞迴recursive
-  - 陣列內容反轉reverse
+  - 陣列內容排列反轉reverse
   - 統計計算statistics
 
 - lab2
-  - linked_list
-  - Queue
-  - Stack
-  - Stack_reverse
+  - 指標鏈結串列linked_list
+  - 環型佇列Queue
+  - 堆疊Stack
+  - 透過堆疊把字串翻轉Stack_reverse
 
 - lab3
-  - build_BST
-  - build_BT
-  - traversal
-  - tree_identical
+  - 依已知數列建造二元搜尋樹build_BST
+  - 依走訪結果建造二元樹build_BT
+  - 走訪二元樹方法traversal
+  - 判斷二元樹內容tree_identical
 
 - lab4
-  - shortestpath_hw
-  - sorting_hw
+  - 點到點的最短距離(Single Source All Destinations)shortestpath_hw
+  - 排列(Merge, Quick Sort)sorting_hw
