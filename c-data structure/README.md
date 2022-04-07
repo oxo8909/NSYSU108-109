@@ -21,3 +21,6 @@
 - lab4
   - 點到點的最短距離(Single Source All Destinations)shortestpath_hw
   - 排列(Merge, Quick Sort)sorting_hw
+
+- term project
+  - 黑白棋reversi
