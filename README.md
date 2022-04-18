@@ -20,5 +20,5 @@
     -  project3
     -  project4
     -  project5
-    -  project6
+    -  project6 (信用卡額度Credit_Limit的回歸模型)
   - 期末專案 (討論: 英文授課是否合適-以中山大學為例)
