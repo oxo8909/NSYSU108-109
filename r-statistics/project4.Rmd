@@ -12,7 +12,7 @@ library(car)
 library(dplyr)
 library(magrittr)
 library(ggplot2)
-bank=read.csv("D:/USER/Desktop/(r)statistics/BankChurners_new.csv")
+bank=read.csv("D:/USER/Desktop/gitproject/r-statistics/BankChurners_new.csv")
 ```
 
 ```{r}
