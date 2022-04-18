@@ -3,9 +3,9 @@
 - 【C語言】資料結構
   - 實驗課實作
     -  lab1 (陣列、矩陣、遞迴)
-    -  lab2
-    -  lab3
-    -  lab4
+    -  lab2 (Stack、Queue、Linked List)
+    -  lab3 (二元樹)
+    -  lab4 (Shortest Path、Sorting)
   - 期末專案 (黑白棋)
 
 - 【C語言】程式設計專案 (個人部分)
